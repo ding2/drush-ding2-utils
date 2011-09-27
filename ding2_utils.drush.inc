@@ -13,6 +13,9 @@ function ding2_utils_drush_command() {
 
   $items['ding2-changed'] = array(
     'description' => "Check which modules has been updated.",
+    'options' => array(
+      'summary' => 'Only show updated.'
+    ),
     /* 'arguments' => array( */
     /*   'site-alias' => 'The site alias to install to', */
     /* ), */
@@ -61,7 +64,9 @@ function drush_ding2_utils_ding2_changed() {
       drush_print_pipe($module);
     }
     else {
-      drush_log(dt("No changes to @module since @version", array('@module' => $module, '@version' => $status['version'])), 'ok');
+      if (!drush_get_option('summary', FALSE)){
+        drush_log(dt("No changes to @module since @version", array('@module' => $module, '@version' => $status['version'])), 'ok');
+      }
     }
   }
 }
