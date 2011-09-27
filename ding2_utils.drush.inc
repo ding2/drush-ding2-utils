@@ -82,7 +82,7 @@ function drush_ding2_utils_ding2_update() {
         if (isset($modules[$dependant])) {
           $modules[$dependant]['changed'] = TRUE;
           $modules[$dependant]['depends'] = TRUE;
-          if (isset($modules[$dependant]['dependencies'])) {
+          if (!isset($modules[$dependant]['dependencies'])) {
             $modules[$dependant]['dependencies'] = array();
           }
           $modules[$dependant]['dependencies'][] = $name;
@@ -127,10 +127,15 @@ function drush_ding2_utils_ding2_update() {
     }
     // Figure out the next.
     if ($status['changed']) {
-      $v = explode('.', $status['tag']);
+      // Transision oldstyle v0.1 tags to 7.x-0.1 tags.
+      $version = preg_replace('/^[^\d]+/', '', $status['tag']);
+      if (!preg_match('/^7.x-/', $version)) {
+        $version = '7.x-' . $version;
+      }
+      $v = explode('.', $version);
       $v[sizeof($v)-1]++;
-      $status['new_tag'] = implode('.', $v);
-      $status['new_version']= preg_replace('/^[^\d]+/', '', $status['new_tag']);
+      // Also, now the version and tag is the same string.
+      $status['new_version'] = $status['new_tag'] = implode('.', $v);
     }
   }
 
@@ -149,12 +154,12 @@ function drush_ding2_utils_ding2_update() {
         $make_file = _ding2_utils_makefile_replace($make_file, array(
                        $dependency => $dep_status['new_tag'],
                      ));
-        if (drush_get_context('DRUSH_SIMULATE')) {
-          drush_log($make_file, 'debug');
-        }
-        else {
-          file_put_contents($make_file_name, $make_file);
-        }
+      }
+      if (drush_get_context('DRUSH_SIMULATE')) {
+        drush_log($make_file, 'debug');
+      }
+      else {
+        file_put_contents($make_file_name, $make_file);
       }
 
       // Commit changes.
