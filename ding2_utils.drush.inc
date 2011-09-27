@@ -80,8 +80,11 @@ function drush_ding2_utils_ding2_update() {
       $status['dependants'] = _ding2_utils_dependants($name, $module_names);
       foreach ($status['dependants'] as $dependant) {
         if (isset($modules[$dependant])) {
+          // Only set depends when not changed.
+          if (!$modules[$dependant]['changed']) {
+            $modules[$dependant]['depends'] = TRUE;
+          }
           $modules[$dependant]['changed'] = TRUE;
-          $modules[$dependant]['depends'] = TRUE;
           if (!isset($modules[$dependant]['dependencies'])) {
             $modules[$dependant]['dependencies'] = array();
           }
@@ -437,6 +440,7 @@ function _ding2_utils_changed() {
       chdir('..');
     }
   }
+
   return $modules;
 }
 
