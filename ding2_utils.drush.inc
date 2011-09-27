@@ -32,6 +32,24 @@ function ding2_utils_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
   );
 
+  $items['ding2-info-make-check'] = array(
+    'description' => 'Check that make files contains the modules listed as dependencies in the info file.',
+    'aliases' => array('imc'),
+    'options' => array(
+      'summary' => 'Only show missing.'
+    ),
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+
+  $items['ding2-make-check'] = array(
+    'description' => 'Check that all makefiles fetches the same version.',
+    'aliases' => array('mc'),
+    /* 'options' => array( */
+    /*   'summary' => 'Only show missing.' */
+    /* ), */
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+
   return $items;
 }
 
@@ -202,6 +220,131 @@ function drush_ding2_utils_ding2_update() {
   }
 
   drush_print($message . "\n\nDetails:\n\n" . $log_message);
+}
+
+/**
+ *
+ */
+function drush_ding2_utils_ding2_info_make_check() {
+  // Ignore these submodules.
+  $ignore = array(
+    'connie',
+    'test_facetbrowser_search',
+    'ding_periodical_reservation',
+  );
+  $mappings = array(
+    'ding_periodical_reservation' => 'ding_periodical',
+
+    'page_manager' => 'ctools',
+    'i18n_field' => 'i18n',
+    'date_popup' => 'date',
+    'block' => NULL,
+    'contextual' => NULL,
+    'image' => NULL,
+    'locale' => NULL,
+    'menu' => NULL,
+    'dblog' => NULL,
+    'shortcut' => NULL,
+    'toolbar' => NULL,
+    'overlay' => NULL,
+    'color' => NULL,
+    'search' => NULL,
+    'translation' => NULL,
+    'list' => NULL,
+  );
+  $files = drush_scan_directory(drush_cwd(), '/\.info$/', array('.', '..', 'CVS', 'contrib'));
+  foreach ($files as $file) {
+    if (in_array(basename($file->filename, '.info'), $ignore)) {
+      // Skip ignored modules.
+      continue;
+    }
+    $ini = _ding2_utils_parse_info_file($file->filename);
+    $module = basename($file->filename, '.info');
+    if ($ini && isset($ini['dependencies'])) {
+      $ok = TRUE;
+      $deps = array();
+      $bad = array();
+      $make_file = "";
+      $make_filename = dirname($file->filename) . '/' . $module . '.make';
+      if (file_exists($make_filename)) {
+        $make_file = file_get_contents($make_filename);
+      }
+      foreach ($ini['dependencies'] as $dependency) {
+        $deps[] = $dependency;
+        if (array_key_exists($dependency, $mappings)) {
+          $dependency = $mappings[$dependency];
+          if (!$dependency) {
+            continue;
+          }
+        }
+        if (!preg_match('/' . preg_quote($dependency) . '/', $make_file)) {
+          $ok = FALSE;
+          $bad[] = $dependency;
+        }
+      }
+      if (!drush_get_option('summary', FALSE) || !$ok){
+        drush_log($module . ': ' . join(', ', $deps), $ok ? 'ok' : 'error');
+      }
+      if (!$ok) {
+        $bad = array_unique($bad);
+        drush_log('  missing: ' . join(', ', $bad), 'error');
+      }
+    }
+  }
+}
+
+/**
+ *
+ */
+function drush_ding2_utils_ding2_make_check() {
+  $dl_types = array(
+    'url' => 'url',
+    'tag' => 'tags',
+    'patch' => 'patches',
+  );
+  $seen_projects = array();
+  $files = drush_scan_directory(drush_cwd(), '/\.make$/', array('.', '..', 'CVS', 'contrib'));
+  foreach ($files as $file) {
+    $current_module = basename($file->filename, '.make');
+    $makefile = _ding2_utils_parse_info_file($file->filename);
+    foreach ($makefile['projects'] as $name => $project) {
+      if (!isset($seen_projects[$name])) {
+        $project['mc_modules'] = array($current_module);
+        $seen_projects[$name] = $project;
+      }
+      else {
+        $seen_projects[$name]['mc_modules'][] = $current_module;
+        $existing = $seen_projects[$name];
+        $in_modules = join(', ', $existing['mc_modules']);
+        /* drush_print_r($existing); */
+        if (!isset($existing['download'])) {
+          // Regular project, compare versions and patches.
+          if ($existing['version'] != $project['version']) {
+            drush_log(dt('Different versions for @project in @module. (@modules)', array('@project' => $name, '@module' => $current_module, '@modules' => $in_modules)), 'error');
+          }
+          if ((isset($existing['patch']) || isset($project['patch'])) && $existing['patch'] != $project['patch']) {
+            drush_log(dt('Different patches for @project in @module. (@modules)', array('@project' => $name, '@module' => $current_module, '@modules' => $in_modules)), 'error');
+          }
+        }
+        else {
+          // Non-d.o project.
+          $error = FALSE;
+          foreach ($dl_types as $key => $desc) {
+            if ($existing['download'][$key] != $project['download'][$key]){
+              drush_log(dt('Different @type for @project in @module. (@modules)', array('@project' => $name, '@module' => $current_module, '@type' => $desc, '@modules' => $in_modules)), 'error');
+              $error = TRUE;
+            }
+          }
+          if (!$error) {
+            if ($existing['download'] != $project['download']) {
+              drush_log(dt('Different download for @project in @module. (@modules)', array('@project' => $name, '@module' => $current_module, '@modules' => $in_modules)), 'error');
+            }
+          }
+        }
+      }
+    }
+    // drush_print_r($makefile);
+  }
 }
 
 /**
