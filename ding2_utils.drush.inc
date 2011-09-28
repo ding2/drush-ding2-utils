@@ -75,7 +75,7 @@ function drush_ding2_utils_ding2_update() {
   // Find changed modules.
   $modules = _ding2_utils_changed();
   $module_names = array_keys($modules);
-  foreach ($modules as $name => $status) {
+  foreach ($modules as $name => &$status) {
     if ($status['changed']) {
       $status['dependants'] = _ding2_utils_dependants($name, $module_names);
       foreach ($status['dependants'] as $dependant) {
