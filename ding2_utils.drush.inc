@@ -75,10 +75,10 @@ function drush_ding2_utils_ding2_update() {
   // Find changed modules.
   $modules = _ding2_utils_changed();
   $module_names = array_keys($modules);
-  foreach ($modules as $name => &$status) {
+  foreach ($modules as $name => $status) {
     if ($status['changed']) {
-      $status['dependants'] = _ding2_utils_dependants($name, $module_names);
-      foreach ($status['dependants'] as $dependant) {
+      $modules[$name]['dependants'] = _ding2_utils_dependants($name, $module_names);
+      foreach ($modules[$name]['dependants'] as $dependant) {
         if (isset($modules[$dependant])) {
           // Only set depends when not changed.
           if (!$modules[$dependant]['changed']) {
@@ -114,7 +114,7 @@ function drush_ding2_utils_ding2_update() {
 
   // Check that current versions match info file, and figure out what the
   // next is.
-  foreach ($modules as $name => &$status) {
+  foreach ($modules as $name => $status) {
     // Check current.
     $info = _ding2_utils_parse_info_file($name . '/' . $name . '.info');
 
@@ -138,7 +138,7 @@ function drush_ding2_utils_ding2_update() {
       $v = explode('.', $version);
       $v[sizeof($v)-1]++;
       // Also, now the version and tag is the same string.
-      $status['new_version'] = $status['new_tag'] = implode('.', $v);
+      $modules[$name]['new_version'] = $modules[$name]['new_tag'] = implode('.', $v);
     }
   }
 
@@ -219,7 +219,9 @@ function drush_ding2_utils_ding2_update() {
   foreach ($modules as $name => $status) {
     if ($status['changed']) {
       drush_print(dt('cd @module ; git push origin master @new_tag ; cd ..', array('@module' => $name, '@new_tag' => $status['new_tag'])));
-      $log_message .= $name . ":\n" . $status['log'] . "\n";
+      if ($status['log']){
+        $log_message .= $name . ":\n" . $status['log'] . "\n";
+      }
       $changed[] = $name;
     }
   }
