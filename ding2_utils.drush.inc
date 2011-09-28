@@ -418,7 +418,12 @@ function _ding2_utils_changed() {
     }
     if (is_dir($dir . '/.git')) {
       chdir($dir);
-      $tags = explode("\n", `git tag | sort -r`);
+      // Look for 7.x-X tags.
+      $tags = explode("\n", `git tag -l 7.x-*| sort -r`);
+      if (!$tags[0]) {
+        // Only fall back to oldstyle vX tags if no 7.x-X style tags exists.
+        $tags = explode("\n", `git tag -l v* | sort -r`);
+      }
       if (!$tags[0]) {
         drush_log(dt("No tags found in @module, ignoring.", array('@module' => $dir)), 'warning');
         chdir('..');
