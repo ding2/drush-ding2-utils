@@ -29,6 +29,10 @@ function ding2_utils_drush_command() {
 
   $items['ding2-update'] = array(
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'description' => "Update makefiles and info files and commit.",
+    'options' => array(
+      'bump' => 'Bump version of modules.'
+    ),
   );
 
   $items['ding2-test'] = array(
@@ -154,9 +158,16 @@ function drush_ding2_utils_ding2_update() {
         if (!$dep_status) {
           drush_log('Could not find status for dependency @module', array('@module' => $dependency), 'error');
         }
-        $make_file = _ding2_utils_makefile_replace($make_file, array(
-                       $dependency => $dep_status['new_tag'],
-                     ));
+        if (drush_get_option('bump', FALSE)) {
+          $make_file = _ding2_utils_makefile_replace($make_file, array(
+                         $dependency => $dep_status['new_tag'],
+                       ));
+        }
+        else {
+          $make_file = _ding2_utils_makefile_outcomment($make_file, array(
+                         $dependency => $dep_status['new_tag'],
+                       ));
+        }
       }
       if (drush_get_context('DRUSH_SIMULATE')) {
         drush_log($make_file, 'debug');
@@ -179,7 +190,7 @@ function drush_ding2_utils_ding2_update() {
     }
 
     // Update info file.
-    if ($status['changed']) {
+    if ($status['changed'] && drush_get_option('bump', FALSE)) {
       $info_file_name = $name . '.info';
       $info_file = file_get_contents($info_file_name);
       $info_file = preg_replace('/^\s*version\s*=.*$/m', 'version = "' . $status['new_version']. '"', $info_file);
@@ -202,24 +213,42 @@ function drush_ding2_utils_ding2_update() {
     chdir('..');
   }
 
-  /* if (drush_confirm('Fix ding2?')) { */
-  /*   $replacements = array(); */
-  /*   $log_message = ''; */
-  /*   chdir('ding2'); */
-  /*   drush_op_system('git checkout dev'); */
-  /*   foreach ($modules as $name => $status) { */
-  /*     if ($status['changed']) { */
-  /*       $replacements[$name] = $status['new_tag']; */
-  /*     } */
-  /*   } */
-  /* } */
+  if (drush_confirm('Fix ding2?')) {
+    $replacements = array();
+    $log_message = '';
+    chdir('ding2');
+    drush_op_system('git checkout dev');
+    $make_file = file_get_contents('ding2.make');
+    foreach ($modules as $name => $status) {
+      if ($status['changed']) {
+        $replacements[$name] = $status['new_tag'];
+      }
+      if (drush_get_option('bump', FALSE)) {
+        $make_file = _ding2_utils_makefile_replace($make_file, $replacements);
+      }
+      else {
+        $make_file = _ding2_utils_makefile_outcomment($make_file, $replacements);
+      }
+    }
+
+    if (drush_get_context('DRUSH_SIMULATE')) {
+      drush_log($make_file, 'debug');
+    }
+    else {
+      file_put_contents('ding2.make', $make_file);
+    }
+    chdir('..');
+  }
 
   $log_message = '';
   $changed = array();
   foreach ($modules as $name => $status) {
     if ($status['changed']) {
-      drush_print(dt('cd @module ; git push origin master @new_tag ; cd ..', array('@module' => $name, '@new_tag' => $status['new_tag'])));
-      if ($status['log']){
+      $message = drush_get_option('bump', FALSE) ?
+        dt('cd @module ; git push origin master @new_tag ; cd ..', array('@module' => $name, '@new_tag' => $status['new_tag'])) :
+        dt('cd @module ; git push origin master ; cd ..', array('@module' => $name));
+      drush_print($message);
+      if (isset($status['log']) && $status['log']){
         $log_message .= $name . ":\n" . $status['log'] . "\n";
       }
       $changed[] = $name;
@@ -358,7 +387,6 @@ function drush_ding2_utils_ding2_make_check() {
         }
       }
     }
-    // drush_print_r($makefile);
   }
 }
 
@@ -370,6 +398,10 @@ function _ding2_utils_makefile_replace($make_file, $replacements) {
     $pattern = "/^\\s*;?\\s*projects\\[$dependency\\]\\[download\\]\\[tag\\].*$/m";
     // Remove any old line(s).
     $make_file = preg_replace($pattern, '', $make_file);
+    // Don't add in tag if there's no uncommented project lines.
+    if (!preg_match("/^\\s*projects\\[$dependency\\]\\[download\\].*$/m", $make_file)) {
+      continue;
+    }
     // Splice in new after the last occurrence of the project.
     $new_line = 'projects[' . $dependency . '][download][tag] = "' . $tag . '"';
     $project_pos = strrpos($make_file, 'projects[' . $dependency . ']');
@@ -386,6 +418,18 @@ function _ding2_utils_makefile_replace($make_file, $replacements) {
     else {
       $make_file = substr($make_file, 0, $new_line_pos + 1) . $new_line . substr($make_file, $new_line_pos + 1);
     }
+  }
+  return $make_file;
+}
+
+/**
+ *
+ */
+function _ding2_utils_makefile_outcomment($make_file, $replacements) {
+  foreach ($replacements as $dependency => $tag) {
+    $pattern = "/^\\s*projects\\[$dependency\\]\\[download\\]\\[tag\\].*$/m";
+    // Out-comment old line(s).
+    $make_file = preg_replace($pattern, '; \\0', $make_file);
   }
   return $make_file;
 }
