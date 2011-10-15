@@ -141,6 +141,7 @@ function drush_ding2_utils_ding2_update() {
       }
       $v = explode('.', $version);
       $v[sizeof($v)-1]++;
+
       // Also, now the version and tag is the same string.
       $modules[$name]['new_version'] = $modules[$name]['new_tag'] = implode('.', $v);
     }
@@ -465,7 +466,7 @@ function _ding2_utils_changed() {
     if (is_dir($dir . '/.git')) {
       chdir($dir);
       // Look for 7.x-X tags.
-      $tags = explode("\n", `git tag -l 7.x-*| sort -r`);
+      $tags = explode("\n", `git tag -l 7.x-*| sort -r -V`);
       if (!$tags[0]) {
         // Only fall back to oldstyle vX tags if no 7.x-X style tags exists.
         $tags = explode("\n", `git tag -l v* | sort -r`);
