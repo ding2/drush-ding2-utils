@@ -564,3 +564,39 @@ function _ding2_utils_parse_info_file($filename) {
 
   return $info;
 }
+
+/**
+ * Implements hook_drush_make_validate_info
+ */
+function ding2_utils_drush_make_validate_info($info) {
+  if (drush_get_option('ding2-dev', FALSE)) {
+    drush_log(dt("Checking out HEAD revisions of Ding 2 repositories."), 'ok');
+
+    foreach ($info['projects'] as $name => &$spec) {
+      // Only consider git repositories.
+      if (!empty($spec['download']['type']) && $spec['download']['type'] == 'git') {
+        // Only mess with repos from the right organisations on
+        // github. The [/:] makes this work with both http and git
+        // protocol specifications.
+        if (preg_match('{github\.com[/:](ding2|dbcdk)/}i', $spec['download']['url'])) {
+          $what = NULL;
+          // Unset any tag or revision specifications. We'll leave any
+          // branch specifications.
+          if (isset($spec['download']['tag'])) {
+            $what = 'tag';
+            unset($spec['download']['tag']);
+          }
+          if (isset($spec['download']['revision'])) {
+            $what = (empty($what) ? '' : ' and ') . 'branch';
+            unset($spec['download']['revision']);
+          }
+          if (!empty($what)) {
+            drush_log(dt('Unsetting @what for @who', array('@what' => $what, '@who' => $name)), 'debug');
+          }
+        }
+      }
+    }
+  }
+
+  return $info;
+}
