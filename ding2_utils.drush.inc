@@ -587,7 +587,7 @@ function ding2_utils_drush_make_validate_info($info) {
             unset($spec['download']['tag']);
           }
           if (isset($spec['download']['revision'])) {
-            $what = (empty($what) ? '' : ' and ') . 'branch';
+            $what = (empty($what) ? '' : ' and ') . 'revision';
             unset($spec['download']['revision']);
           }
           if (!empty($what)) {
