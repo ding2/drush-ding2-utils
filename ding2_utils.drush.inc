@@ -276,13 +276,19 @@ function drush_ding2_utils_ding2_info_make_check() {
     'connie',
     'test_facetbrowser_search',
     'ding_periodical_reservation',
+    'ding_library_menu',
+    'ding_campaign_ctype',
   );
   $mappings = array(
     'ding_periodical_reservation' => 'ding_periodical',
-
+    'ding_campaign_ctype' => 'ding_campaign',
+    'ding_library_menu' => 'ding_library',
     'page_manager' => 'ctools',
+    'views_content' => 'ctools',
     'i18n_field' => 'i18n',
     'date_popup' => 'date',
+    'date_views' => 'date',
+    'openlayers_views' => 'openlayers',
     'block' => NULL,
     'contextual' => NULL,
     'image' => NULL,
@@ -296,6 +302,9 @@ function drush_ding2_utils_ding2_info_make_check() {
     'search' => NULL,
     'translation' => NULL,
     'list' => NULL,
+    'comment' => NULL,
+    'taxonomy' => NULL,
+    'field' => NULL,
   );
   $files = drush_scan_directory(drush_cwd(), '/\.info$/', array('.', '..', 'CVS', 'contrib'));
   foreach ($files as $file) {
@@ -566,9 +575,17 @@ function _ding2_utils_parse_info_file($filename) {
 }
 
 /**
- * Implements hook_drush_make_validate_info
+ * Legacy support for drush_make (now part of core and simply named
+ * 'make').
  */
 function ding2_utils_drush_make_validate_info($info) {
+  return ding2_utils_make_validate_info($info);
+}
+
+/**
+ * Implements hook_drush_make_validate_info
+ */
+function ding2_utils_make_validate_info($info) {
   if (drush_get_option('ding2-dev', FALSE)) {
     drush_log(dt("Checking out HEAD revisions of Ding 2 repositories."), 'ok');
 
