@@ -575,9 +575,17 @@ function _ding2_utils_parse_info_file($filename) {
 }
 
 /**
- * Implements hook_drush_make_validate_info
+ * Legacy support for drush_make (now part of core and simply named
+ * 'make').
  */
 function ding2_utils_drush_make_validate_info($info) {
+  return ding2_utils_make_validate_info($info);
+}
+
+/**
+ * Implements hook_drush_make_validate_info
+ */
+function ding2_utils_make_validate_info($info) {
   if (drush_get_option('ding2-dev', FALSE)) {
     drush_log(dt("Checking out HEAD revisions of Ding 2 repositories."), 'ok');
 
