@@ -646,7 +646,12 @@ function ding2_utils_make_validate_info($info) {
       if (in_array(trim($name), $project_seen)) {
         // Project seen before so simply remove it form the list.
         drush_print('Project seen before: ' . $name);
-        unset($info['projects'][$name]);
+        if (isset($info['projects'][$name])) {
+          unset($info['projects'][$name]);
+        }
+        else {
+          unset($info['libraries'][$name]);
+        }
       }
       else {
         // Add project to the seen list.
