@@ -622,9 +622,9 @@ function ding2_utils_make_validate_info($info) {
   // This options help speed up the build process by only download a given
   // project the first time it's referenced in a makefile.
   if (drush_get_option('ding2-only-once', FALSE)) {
-    // The list of seen projects are cached in drush's cache due to the fatch
+    // The list of seen projects are cached in drush's cache due to the fact
     // that drush creates a new process for each makefile, hence static will not
-    // work. So to store the information acroess processes we use the cache with
+    // work. So to store the information across processes we use the cache with
     // a 10 min expire.
     $project_seen = array();
     $cache = drush_cache_get('drush_make_project_seen', 'default');
@@ -658,7 +658,7 @@ function ding2_utils_make_validate_info($info) {
         $project_seen[] = trim($name);
       }
     }
-    // Store information in the cache with the 10 min expire.
+    // Store information in the cache for 10 minutes.
     drush_cache_set('drush_make_project_seen', $project_seen, 'default', 600);
   }
 
