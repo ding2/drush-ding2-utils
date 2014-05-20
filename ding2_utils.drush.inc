@@ -619,5 +619,48 @@ function ding2_utils_make_validate_info($info) {
     }
   }
 
+  // This options help speed up the build process by only download a given
+  // project the first time it's referenced in a makefile.
+  if (drush_get_option('ding2-only-once', FALSE)) {
+    // The list of seen projects are cached in drush's cache due to the fatch
+    // that drush creates a new process for each makefile, hence static will not
+    // work. So to store the information acroess processes we use the cache with
+    // a 10 min expire.
+    $project_seen = array();
+    $cache = drush_cache_get('drush_make_project_seen', 'default');
+    if ($cache && $cache->expire > time()) {
+      $project_seen = $cache->data;
+    }
+
+    // Get names of projects and libraries.
+    $names = array();
+    if (isset($info['projects'])) {
+      $names += array_keys($info['projects']);
+    }
+    if (isset($info['libraries'])) {
+      $names += array_keys($info['libraries']);
+    }
+
+    // Loop over the names found in current makefile.
+    foreach ($names as $name) {
+      if (in_array(trim($name), $project_seen)) {
+        // Project seen before so simply remove it form the list.
+        drush_print('Project seen before: ' . $name);
+        if (isset($info['projects'][$name])) {
+          unset($info['projects'][$name]);
+        }
+        else {
+          unset($info['libraries'][$name]);
+        }
+      }
+      else {
+        // Add project to the seen list.
+        $project_seen[] = trim($name);
+      }
+    }
+    // Store information in the cache with the 10 min expire.
+    drush_cache_set('drush_make_project_seen', $project_seen, 'default', 600);
+  }
+
   return $info;
 }
